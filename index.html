@@ -6,6 +6,7 @@
     <title>Doctor A Chatbot</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css" rel="stylesheet">
     <style>
         .chat-container {
             height: calc(100vh - 180px);
@@ -35,6 +36,41 @@
             20% { opacity: 1; }
             100% { opacity: 0.2; }
         }
+
+        /* Style for markdown content */
+        .markdown-body {
+            background-color: transparent !important;
+            font-size: 0.95rem;
+        }
+        .bot-message .markdown-body {
+            color: inherit;
+        }
+        .user-message .markdown-body {
+            color: white;
+        }
+        .markdown-body pre {
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+        }
+        .user-message .markdown-body pre {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .markdown-body code {
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-size: 85%;
+        }
+        .user-message .markdown-body code {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .markdown-body ul,
+        .markdown-body ol {
+            margin-bottom: 0;
+            padding-left: 1.5em;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -57,7 +93,9 @@
             <div id="chatContainer" class="chat-container overflow-y-auto p-4">
                 <!-- Welcome Message -->
                 <div class="message bot-message p-3 ml-2">
-                    <p>Xin chào! Tôi là Doctor A. Tôi có thể giúp gì cho bạn về các vấn đề sức khỏe?</p>
+                    <div class="markdown-body">
+                        <p>Xin chào! Tôi là Doctor A. Tôi có thể giúp gì cho bạn về các vấn đề sức khỏe?</p>
+                    </div>
                 </div>
                 
                 <!-- Typing Indicator -->
@@ -90,6 +128,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
     <script>
         const chatContainer = document.getElementById('chatContainer');
         const chatForm = document.getElementById('chatForm');
@@ -97,7 +136,16 @@
         const typingIndicator = document.querySelector('.typing-indicator');
 
         // Cấu hình API URL
-        const API_URL = 'https://9a28-14-231-145-24.ngrok-free.app/chat'; // Thay thế bằng URL ngrok của bạn
+        const API_URL = 'https://d293-14-231-145-24.ngrok-free.app/chat/'; // Thay thế bằng URL ngrok của bạn
+
+        // Cấu hình Marked.js
+        marked.setOptions({
+            breaks: true, // Cho phép xuống dòng với một lần enter
+            gfm: true,    // Sử dụng GitHub Flavored Markdown
+            headerIds: false, // Tắt tự động tạo ID cho headers
+            mangle: false,    // Tắt mangle
+            sanitize: false,  // Cho phép HTML
+        });
 
         function scrollToBottom() {
             chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -106,9 +154,20 @@
         function addMessage(content, isUser = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user-message ml-auto' : 'bot-message'} p-3`;
-            messageDiv.innerHTML = `<p>${content}</p>`;
+            
+            // Parse markdown và wrap trong markdown-body div
+            const markdownContent = marked.parse(content);
+            messageDiv.innerHTML = `<div class="markdown-body">${markdownContent}</div>`;
+            
             chatContainer.insertBefore(messageDiv, typingIndicator);
             scrollToBottom();
+
+            // Highlight code blocks nếu có
+            if (messageDiv.querySelectorAll('pre code').length > 0) {
+                messageDiv.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightBlock(block);
+                });
+            }
         }
 
         function showTypingIndicator() {
@@ -120,13 +179,22 @@
             typingIndicator.style.display = 'none';
         }
 
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const message = userInput.value.trim();
             if (!message) return;
 
             // Thêm tin nhắn người dùng
-            addMessage(message, true);
+            addMessage(escapeHtml(message), true);
             userInput.value = '';
 
             // Hiển thị typing indicator
@@ -139,7 +207,7 @@
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     },
-                    mode: 'cors', // Thêm mode cors
+                    mode: 'cors',
                     body: JSON.stringify({ query: message })
                 });
 
