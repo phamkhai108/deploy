@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor A Chatbot</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 180px);
+        }
+        .message {
+            max-width: 80%;
+            margin-bottom: 1rem;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            border-radius: 1rem 1rem 0 1rem;
+        }
+        .bot-message {
+            background-color: #e9ecef;
+            color: black;
+            border-radius: 1rem 1rem 1rem 0;
+        }
+        .typing-indicator {
+            display: none;
+        }
+        .typing-indicator span {
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0% { opacity: 0.2; }
+            20% { opacity: 1; }
+            100% { opacity: 0.2; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg">
+            <!-- Header -->
+            <div class="bg-blue-600 text-white p-4 rounded-t-xl">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+                        <span class="text-blue-600 text-2xl font-bold">A</span>
+                    </div>
+                    <div class="ml-4">
+                        <h1 class="text-xl font-bold">Doctor A</h1>
+                        <p class="text-sm opacity-90">Trợ lý y tế thông minh</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Container -->
+            <div id="chatContainer" class="chat-container overflow-y-auto p-4">
+                <!-- Welcome Message -->
+                <div class="message bot-message p-3 ml-2">
+                    <p>Xin chào! Tôi là Doctor A. Tôi có thể giúp gì cho bạn về các vấn đề sức khỏe?</p>
+                </div>
+                
+                <!-- Typing Indicator -->
+                <div class="typing-indicator message bot-message p-3 ml-2">
+                    <span>●</span>
+                    <span>●</span>
+                    <span>●</span>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-t p-4">
+                <form id="chatForm" class="flex gap-2">
+                    <input 
+                        type="text" 
+                        id="userInput" 
+                        class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Nhập câu hỏi của bạn..."
+                        required
+                    >
+                    <button 
+                        type="submit" 
+                        class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        Gửi
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const chatForm = document.getElementById('chatForm');
+        const userInput = document.getElementById('userInput');
+        const typingIndicator = document.querySelector('.typing-indicator');
+
+        // Cấu hình API URL
+        const API_URL = 'https://69ee-14-231-145-24.ngrok-free.app/chat/'; // Thay thế bằng URL ngrok của bạn
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message ml-auto' : 'bot-message'} p-3`;
+            messageDiv.innerHTML = `<p>${content}</p>`;
+            chatContainer.insertBefore(messageDiv, typingIndicator);
+            scrollToBottom();
+        }
+
+        function showTypingIndicator() {
+            typingIndicator.style.display = 'block';
+            scrollToBottom();
+        }
+
+        function hideTypingIndicator() {
+            typingIndicator.style.display = 'none';
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Thêm tin nhắn người dùng
+            addMessage(message, true);
+            userInput.value = '';
+
+            // Hiển thị typing indicator
+            showTypingIndicator();
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    mode: 'cors', // Thêm mode cors
+                    body: JSON.stringify({ query: message })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Ẩn typing indicator và thêm tin nhắn bot
+                hideTypingIndicator();
+                addMessage(data.response);
+            } catch (error) {
+                console.error('Error:', error);
+                hideTypingIndicator();
+                addMessage('Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.', false);
+            }
+        });
+
+        // Auto-focus vào input khi trang tải xong
+        window.addEventListener('load', () => {
+            userInput.focus();
+        });
+    </script>
+</body>
+</html>
